@@ -1,7 +1,7 @@
 """Config flow for Roon."""
 
 import voluptuous as vol
-
+from asyncio import sleep
 from homeassistant.core import callback
 from homeassistant import config_entries
 import homeassistant.helpers.config_validation as cv
@@ -65,9 +65,16 @@ class FlowHandler(config_entries.ConfigFlow):
             token = None
             try:
                 from roon import RoonApi
-                roonapi = RoonApi(ROON_APPINFO, token, self.user_input[CONF_HOST], blocking_init=True)
-                # TODO: make this non blocking
-                token = roonapi.token
+                count = 0
+                roonapi = RoonApi(ROON_APPINFO, token, self.user_input[CONF_HOST], blocking_init=False)
+                while count < 30:
+                    # wait a maximum of 30 seconds for the token
+                    token = roonapi.token
+                    count += 1
+                    if token:
+                        break
+                    else:
+                        await sleep(1, self.hass.loop)
             except Exception:
                 errors['base'] = 'cannot_connect'
             if not token:

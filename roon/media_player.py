@@ -41,20 +41,25 @@ async def async_setup_platform(
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up Roon MediaPlayer from Config Entry."""
     roon_server = hass.data[DOMAIN][config_entry.data["host"]]
+    media_players = {}
 
     @callback
-    def async_add_media_player(player_data):
-        """Add Roon MediaPlayer."""
-        media_player = RoonDevice(roon_server, player_data)
-        async_add_entities([media_player])
-        # also register a callback to watch for player updates (prevents polling)
-        @callback
-        def async_update_media_player(player_data):
+    def async_update_media_player(player_data):
+        """Add or update Roon MediaPlayer."""
+        dev_id = player_data['dev_id']
+        if dev_id not in media_players:
+            # new player!
+            media_player = RoonDevice(roon_server, player_data)
+            media_players[dev_id] = media_player
+            async_add_entities([media_player])
+        else:
+            # update existing player
+            media_player = media_players[dev_id]
             media_player.update_data(player_data)
             media_player.async_update_callback(media_player.unique_id)
-        async_dispatcher_connect(hass, 'roon_update_media_player_%s' % player_data["dev_id"], async_update_media_player)
-    # start listening for players to be added by the server component
-    async_dispatcher_connect(hass, 'roon_new_media_player', async_add_media_player)
+    
+    # start listening for players to be added or changed by the server component
+    async_dispatcher_connect(hass, 'roon_media_player', async_update_media_player)
 
 
 class RoonDevice(MediaPlayerDevice):
@@ -96,7 +101,8 @@ class RoonDevice(MediaPlayerDevice):
             },
             'name': self.name,
             'manufacturer': "RoonLabs",
-            'model': "player"
+            'model': "player",
+            'via_hub': (DOMAIN, self._server.host)
         }
 
 

@@ -9,7 +9,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import (_LOGGER, DOMAIN, CONF_CUSTOM_PLAY_ACTION, ROON_APPINFO)
 
-UPDATE_PLAYLISTS_INTERVAL = 360
+UPDATE_PLAYLISTS_INTERVAL = 30
 
 class RoonServer:
     """Manages a single Roon Server."""
@@ -39,11 +39,11 @@ class RoonServer:
         self.roonapi = RoonApi(ROON_APPINFO, token, host, blocking_init=False)
         self.roonapi.register_state_callback(self.roonapi_state_callback, event_filter=["zones_changed"])
 
-        # Initialize Roon background polling
-        ensure_future(self.do_loop())
-
         # initialize media_player platform
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(self.config_entry, 'media_player'))
+
+        # Initialize Roon background polling
+        ensure_future(self.do_loop())
 
         return True
 
@@ -72,7 +72,6 @@ class RoonServer:
     @asyncio.coroutine
     def do_loop(self):
         ''' background work loop'''
-        _LOGGER.debug("Starting background refresh loop")
         self._exit = False
         while not self._exit:
             yield from self.update_players()
@@ -82,8 +81,6 @@ class RoonServer:
     @asyncio.coroutine
     def update_changed_players(self, changed_zones_ids):
         """Update the players which were reported as changed by the Roon API"""
-
-        #build devices listing
         for zone_id in changed_zones_ids:
             if zone_id not in self.roonapi.zones:
                 # device was removed ?
@@ -97,20 +94,12 @@ class RoonServer:
                 player_data = yield from self.create_player_data(zone, device)
                 dev_id = player_data["dev_id"]
                 player_data["is_available"] = True
+                if dev_id in self.offline_devices:
+                    # player back online
+                    self.offline_devices.remove(dev_id)
+                async_dispatcher_send(self.hass, 'roon_media_player', player_data)
                 if not dev_id in self.all_player_ids:
-                    # new player added !
-                    async_dispatcher_send(self.hass, 'roon_new_media_player', player_data)
                     self.all_player_ids.append(dev_id)
-                    self.all_player_names.append(dev_name)
-                else:
-                    # device was updated
-                    if dev_id in self.offline_devices:
-                        # player back online
-                        self.offline_devices.remove(dev_id)
-                    signal = 'roon_update_media_player_%s' % dev_id
-                    async_dispatcher_send(self.hass, signal, player_data)
-                    yield from self.update_volume_slider(dev_id, dev_name)
-
 
     @asyncio.coroutine
     def update_players(self):
@@ -130,10 +119,8 @@ class RoonServer:
                 # player was removed!
                 player_data = all_devs[dev_id]
                 player_data["is_available"] = False
-                signal = 'roon_update_media_player_%s' % dev_id
-                async_dispatcher_send(self.hass, signal, player_data)
+                async_dispatcher_send(self.hass, 'roon_media_player', player_data)
                 self.offline_devices.append(dev_id)
-
 
     @asyncio.coroutine        
     def update_playlists(self):
