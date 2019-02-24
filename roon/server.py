@@ -9,7 +9,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import (DOMAIN, CONF_CUSTOM_PLAY_ACTION, ROON_APPINFO)
 
 _LOGGER = logging.getLogger(__name__)
-UPDATE_PLAYLISTS_INTERVAL = 30
+FULL_SYNC_INTERVAL = 30
 
 class RoonServer:
     """Manages a single Roon Server."""
@@ -74,8 +74,8 @@ class RoonServer:
         self._exit = False
         while not self._exit:
             await self.async_update_players()
-            await self.async_update_playlists()
-            await sleep(UPDATE_PLAYLISTS_INTERVAL, self.hass.loop)
+            #await self.async_update_playlists()
+            await sleep(FULL_SYNC_INTERVAL, self.hass.loop)
 
     async def async_update_changed_players(self, changed_zones_ids):
         """Update the players which were reported as changed by the Roon API"""
