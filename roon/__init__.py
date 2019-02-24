@@ -4,11 +4,12 @@ Roon (www.roonlabs.com) component.
 For more details about this platform, please refer to the documentation at
 https://home-assistant.io/components/roon/
 """
+import logging
 from homeassistant import config_entries
 from homeassistant.helpers import device_registry as dr
 from .server import RoonServer
 from homeassistant.const import CONF_HOST
-from .const import (DOMAIN, _LOGGER, CONFIG_SCHEMA, CONF_CUSTOM_PLAY_ACTION)
+from .const import (DOMAIN, CONFIG_SCHEMA, CONF_CUSTOM_PLAY_ACTION)
 
 # We need an import from .config_flow, without it .config_flow is never loaded.
 from .config_flow import FlowHandler, configured_hosts
@@ -17,6 +18,7 @@ DATA_CONFIGS = "roon_configs"
 
 REQUIREMENTS = ['roonapi>=0.0.20']
 
+_LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass, config):
     """Set up the Roon platform."""

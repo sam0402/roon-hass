@@ -1,13 +1,10 @@
 """Constants for Roon Component."""
-import logging
 from homeassistant.exceptions import HomeAssistantError
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.const import CONF_HOST, CONF_API_KEY
 
 DOMAIN = 'roon'
-
-_LOGGER = logging.getLogger(DOMAIN)
 
 CONF_CUSTOM_PLAY_ACTION = 'custom_play_action'
 

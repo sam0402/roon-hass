@@ -1,5 +1,5 @@
 """Config flow for Roon."""
-
+import logging
 import voluptuous as vol
 from asyncio import sleep
 from homeassistant.core import callback
@@ -7,8 +7,9 @@ from homeassistant import config_entries
 import homeassistant.helpers.config_validation as cv
 from collections import OrderedDict
 from homeassistant.const import CONF_HOST, CONF_API_KEY
-from .const import _LOGGER, DOMAIN, CONF_CUSTOM_PLAY_ACTION, ROON_APPINFO, CONFIG_SCHEMA
+from .const import DOMAIN, CONF_CUSTOM_PLAY_ACTION, ROON_APPINFO, CONFIG_SCHEMA
 
+_LOGGER = logging.getLogger(__name__)
 
 @callback
 def configured_hosts(hass):
@@ -52,7 +53,6 @@ class FlowHandler(config_entries.ConfigFlow):
         Given a configured host, will ask the user to approve the extension in roon.
         """
         errors = {}
-        _LOGGER.info("async_step_link: %s" % user_input)
 
         if user_input and user_input.get(CONF_API_KEY):
             return self.async_create_entry(

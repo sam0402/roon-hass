@@ -1,13 +1,14 @@
 """Code to handle the api connection to a Roon server."""
-from homeassistant.const import (
-    CONF_HOST, CONF_API_KEY, EVENT_HOMEASSISTANT_STOP)
+import logging
+from homeassistant.const import CONF_HOST, CONF_API_KEY
 from homeassistant.util.dt import utcnow
 from homeassistant.core import callback
 from asyncio import ensure_future, sleep, run_coroutine_threadsafe
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from .const import (_LOGGER, DOMAIN, CONF_CUSTOM_PLAY_ACTION, ROON_APPINFO)
+from .const import (DOMAIN, CONF_CUSTOM_PLAY_ACTION, ROON_APPINFO)
 
+_LOGGER = logging.getLogger(__name__)
 UPDATE_PLAYLISTS_INTERVAL = 30
 
 class RoonServer:

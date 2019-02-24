@@ -5,6 +5,7 @@ MediaPlayer platform for Roon component
 For more details about this platform, please refer to the documentation at
 https://home-assistant.io/components/media_player.roon/
 """
+import logging
 from homeassistant.components.media_player import MediaPlayerDevice
 from homeassistant.components.media_player.const import (
     ATTR_MEDIA_ENQUEUE, SUPPORT_PLAY_MEDIA, SUPPORT_SELECT_SOURCE, SUPPORT_STOP, SUPPORT_SHUFFLE_SET,
@@ -16,7 +17,7 @@ from homeassistant.const import (
 from homeassistant.util.dt import utcnow
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from .const import (_LOGGER, DOMAIN, CONF_CUSTOM_PLAY_ACTION)
+from .const import (DOMAIN, CONF_CUSTOM_PLAY_ACTION)
 
 DEPENDENCIES = ['roon']
 
@@ -25,7 +26,7 @@ SUPPORT_ROON = SUPPORT_PAUSE | SUPPORT_VOLUME_SET | SUPPORT_STOP | \
     SUPPORT_SEEK | SUPPORT_TURN_ON | SUPPORT_TURN_OFF | SUPPORT_VOLUME_MUTE | \
     SUPPORT_PLAY | SUPPORT_PLAY_MEDIA | SUPPORT_SELECT_SOURCE | SUPPORT_VOLUME_STEP
 
-
+_LOGGER = logging.getLogger(__name__)
 
 async def async_setup_platform(
         hass, config, async_add_entities, discovery_info=None):
