@@ -5,9 +5,7 @@ MediaPlayer platform for Roon component
 For more details about this platform, please refer to the documentation at
 https://home-assistant.io/components/media_player.roon/
 """
-import asyncio
-from homeassistant.components.media_player import (
-    MediaPlayerDevice, PLATFORM_SCHEMA)
+from homeassistant.components.media_player import MediaPlayerDevice
 from homeassistant.components.media_player.const import (
     ATTR_MEDIA_ENQUEUE, SUPPORT_PLAY_MEDIA, SUPPORT_SELECT_SOURCE, SUPPORT_STOP, SUPPORT_SHUFFLE_SET,
     MEDIA_TYPE_MUSIC, SUPPORT_NEXT_TRACK, SUPPORT_PAUSE,
@@ -15,13 +13,10 @@ from homeassistant.components.media_player.const import (
     SUPPORT_VOLUME_MUTE, SUPPORT_VOLUME_SET, SUPPORT_VOLUME_STEP, SUPPORT_PLAY)
 from homeassistant.const import (
     STATE_IDLE, STATE_OFF, STATE_PAUSED, STATE_PLAYING, DEVICE_DEFAULT_NAME)
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util.dt import utcnow
 from homeassistant.core import callback
-from asyncio import ensure_future
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-
-from .const import (_LOGGER, DOMAIN, CONF_CUSTOM_PLAY_ACTION, CONF_SOURCE_CONTROLS, CONF_VOLUME_CONTROLS)
+from .const import (_LOGGER, DOMAIN, CONF_CUSTOM_PLAY_ACTION)
 
 DEPENDENCIES = ['roon']
 
@@ -42,7 +37,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up Roon MediaPlayer from Config Entry."""
     roon_server = hass.data[DOMAIN][config_entry.data["host"]]
     media_players = {}
-
     @callback
     def async_update_media_player(player_data):
         """Add or update Roon MediaPlayer."""
@@ -57,7 +51,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             media_player = media_players[dev_id]
             media_player.update_data(player_data)
             media_player.async_update_callback(media_player.unique_id)
-    
     # start listening for players to be added or changed by the server component
     async_dispatcher_connect(hass, 'roon_media_player', async_update_media_player)
 
@@ -105,9 +98,7 @@ class RoonDevice(MediaPlayerDevice):
             'via_hub': (DOMAIN, self._server.host)
         }
 
-
-    @asyncio.coroutine
-    def async_update(self):
+    async def async_update(self):
         """Retrieve the current state of the player."""
         self.update_data(self.player_data)
 
@@ -115,45 +106,46 @@ class RoonDevice(MediaPlayerDevice):
         """ Update session object. """
         if player_data:
             self.player_data = player_data
-        self._available = self.player_data["is_available"]
-        self._sources = self.get_sync_zones()
-        # determine player state
-        self.update_state()
-        if self.state == STATE_PLAYING:
-            self._last_position_update = utcnow()
+        if not self.player_data["is_available"]:
+            # this player was removed
+            self._available = False
+            self._state = STATE_OFF
+        else:
+            self._available = True
+            self._sources = self.get_sync_zones()
+            # determine player state
+            self.update_state()
+            if self.state == STATE_PLAYING:
+                self._last_position_update = utcnow()
         
     def update_state(self):
         ''' update the power state and player state '''
-        if not self.available:
-            self._state = STATE_OFF
-        else:
-            cur_state = self._state
-            new_state = ""
-            # power state from source control (if supported)
-            if 'source_controls' in self.player_data:
-                for source in self.player_data["source_controls"]:
-                    if source["supports_standby"]:
-                        if not source["status"] == "indeterminate":
-                            self._supports_standby = True
-                            if source["status"] in ["standby", "deselected"]:
-                                new_state = STATE_OFF
-                            break
-            # determine player state
-            if not new_state:
-                if self.player_data['state'] == 'playing':
-                    new_state = STATE_PLAYING
-                elif self.player_data['state'] == 'loading':
-                    new_state = STATE_PLAYING
-                elif self.player_data['state'] == 'stopped':
-                    new_state = STATE_IDLE
-                elif self.player_data['state'] == 'paused':
-                    new_state = STATE_PAUSED
-                else:
-                    new_state = STATE_IDLE
-            self._state = new_state
+        cur_state = self._state
+        new_state = ""
+        # power state from source control (if supported)
+        if 'source_controls' in self.player_data:
+            for source in self.player_data["source_controls"]:
+                if source["supports_standby"]:
+                    if not source["status"] == "indeterminate":
+                        self._supports_standby = True
+                        if source["status"] in ["standby", "deselected"]:
+                            new_state = STATE_OFF
+                        break
+        # determine player state
+        if not new_state:
+            if self.player_data['state'] == 'playing':
+                new_state = STATE_PLAYING
+            elif self.player_data['state'] == 'loading':
+                new_state = STATE_PLAYING
+            elif self.player_data['state'] == 'stopped':
+                new_state = STATE_IDLE
+            elif self.player_data['state'] == 'paused':
+                new_state = STATE_PAUSED
+            else:
+                new_state = STATE_IDLE
+        self._state = new_state
 
-    @asyncio.coroutine
-    def async_added_to_hass(self):
+    async def async_added_to_hass(self):
         """Register callback."""
         _LOGGER.info("New Roon Device %s initialized with ID: %s" % (self.entity_id, self.unique_id))
 

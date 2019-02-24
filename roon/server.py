@@ -1,10 +1,9 @@
-"""Code to handle a Roon server."""
-import asyncio
+"""Code to handle the api connection to a Roon server."""
 from homeassistant.const import (
     CONF_HOST, CONF_API_KEY, EVENT_HOMEASSISTANT_STOP)
 from homeassistant.util.dt import utcnow
 from homeassistant.core import callback
-from asyncio import ensure_future
+from asyncio import ensure_future, sleep, run_coroutine_threadsafe
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import (_LOGGER, DOMAIN, CONF_CUSTOM_PLAY_ACTION, ROON_APPINFO)
@@ -43,7 +42,7 @@ class RoonServer:
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(self.config_entry, 'media_player'))
 
         # Initialize Roon background polling
-        ensure_future(self.do_loop())
+        ensure_future(self.async_do_loop())
 
         return True
 
@@ -67,19 +66,17 @@ class RoonServer:
 
     def roonapi_state_callback(self, event, changed_zones):
         '''callbacks from the roon api websockets'''
-        asyncio.run_coroutine_threadsafe(self.update_changed_players(changed_zones), self.hass.loop)
+        run_coroutine_threadsafe(self.async_update_changed_players(changed_zones), self.hass.loop)
 
-    @asyncio.coroutine
-    def do_loop(self):
+    async def async_do_loop(self):
         ''' background work loop'''
         self._exit = False
         while not self._exit:
-            yield from self.update_players()
-            yield from self.update_playlists()
-            yield from asyncio.sleep(UPDATE_PLAYLISTS_INTERVAL, self.hass.loop)
+            await self.async_update_players()
+            await self.async_update_playlists()
+            await sleep(UPDATE_PLAYLISTS_INTERVAL, self.hass.loop)
 
-    @asyncio.coroutine
-    def update_changed_players(self, changed_zones_ids):
+    async def async_update_changed_players(self, changed_zones_ids):
         """Update the players which were reported as changed by the Roon API"""
         for zone_id in changed_zones_ids:
             if zone_id not in self.roonapi.zones:
@@ -91,7 +88,7 @@ class RoonServer:
                 if dev_name == "Unnamed" or not dev_name:
                     # ignore unnamed devices
                     continue
-                player_data = yield from self.create_player_data(zone, device)
+                player_data = await self.async_create_player_data(zone, device)
                 dev_id = player_data["dev_id"]
                 player_data["is_available"] = True
                 if dev_id in self.offline_devices:
@@ -101,29 +98,27 @@ class RoonServer:
                 if not dev_id in self.all_player_ids:
                     self.all_player_ids.append(dev_id)
 
-    @asyncio.coroutine
-    def update_players(self):
+    async def async_update_players(self):
         ''' periodic full scan of all devices'''
         zone_ids = self.roonapi.zones.keys()
-        yield from self.update_changed_players(zone_ids)
+        await self.async_update_changed_players(zone_ids)
         # check for any removed devices
         all_devs = {}
         for zone_id in zone_ids:
             zone = self.roonapi.zones[zone_id]
             for device in zone["outputs"]:
-                player_data = yield from self.create_player_data(zone, device)
+                player_data = await self.async_create_player_data(zone, device)
                 dev_id = player_data["dev_id"]
                 all_devs[dev_id] = player_data
         for dev_id in self.all_player_ids:
             if dev_id not in all_devs.keys():
                 # player was removed!
-                player_data = all_devs[dev_id]
+                player_data = {'dev_id': dev_id}
                 player_data["is_available"] = False
                 async_dispatcher_send(self.hass, 'roon_media_player', player_data)
                 self.offline_devices.append(dev_id)
-
-    @asyncio.coroutine        
-    def update_playlists(self):
+     
+    async def async_update_playlists(self):
         ''' store lists in memory with all playlists - acessible by custom lovelace card later '''
 
         # TODO: work out how to use this data in a custom UI component
@@ -136,8 +131,7 @@ class RoonServer:
             all_playlists += [item["title"] for item in roon_playlists["items"]]
         self.all_playlists = all_playlists
 
-    @asyncio.coroutine
-    def create_player_data(self, zone, output):
+    async def async_create_player_data(self, zone, output):
         ''' create player object dict by combining zone with output'''
         new_dict = zone.copy()
         new_dict.update(output)

@@ -10,11 +10,6 @@ DOMAIN = 'roon'
 _LOGGER = logging.getLogger(DOMAIN)
 
 CONF_CUSTOM_PLAY_ACTION = 'custom_play_action'
-CONF_SOURCE_CONTROLS = 'source_controls'
-CONF_VOLUME_CONTROLS = 'volume_controls'
-CONF_SERVERS = 'servers'
-
-KNOWN_ROONPLAYERS_INFO_KEY = 'roon_known_mediaplayers'
 
 ROON_APPINFO = {
             "extension_id": "home_assistant",
