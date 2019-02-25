@@ -50,8 +50,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         else:
             # update existing player
             media_player = media_players[dev_id]
-            media_player.update_data(player_data)
-            media_player.async_update_callback(media_player.unique_id)
+            if media_player and media_player.entity_id:
+                media_player.update_data(player_data)
+                media_player.async_update_callback(media_player.unique_id)
     # start listening for players to be added or changed by the server component
     async_dispatcher_connect(hass, 'roon_media_player', async_update_media_player)
 
@@ -89,13 +90,16 @@ class RoonDevice(MediaPlayerDevice):
     @property
     def device_info(self):
         """Return the device info."""
+        dev_model = "player"
+        if self.player_data.get('source_controls'):
+            dev_model = self.player_data['source_controls'][0].get('display_name')
         return {
             'identifiers': {
                 (DOMAIN, self.unique_id)
             },
             'name': self.name,
             'manufacturer': "RoonLabs",
-            'model': "player",
+            'model': dev_model,
             'via_hub': (DOMAIN, self._server.host)
         }
 
