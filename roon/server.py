@@ -74,7 +74,7 @@ class RoonServer:
         self._exit = False
         while not self._exit:
             await self.async_update_players()
-            #await self.async_update_playlists()
+            await self.async_update_playlists()
             await sleep(FULL_SYNC_INTERVAL, self.hass.loop)
 
     async def async_update_changed_players(self, changed_zones_ids):

@@ -63,6 +63,7 @@ class RoonDevice(MediaPlayerDevice):
     def __init__(self, server, player_data):
         """Initialize Roon device object."""
         self._sources = []
+        self._playlists = []
         self._server = server
         self._available = True
         self._last_position_update = None
@@ -337,6 +338,11 @@ class RoonDevice(MediaPlayerDevice):
         """List of available input sources."""
         return self._sources
         
+    @property
+    def media_series_title(self):
+        """List of all playlists."""
+        return self._server.all_playlists
+
     @property
     def shuffle(self):
         """Boolean if shuffle is enabled."""
